@@ -1,0 +1,18 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<!-- generated on 2025-06-03 11:57:58.368121 by randomTrips.py v1_23_1+0000-676720d13f6
+<configuration>
+    <net-file value="C:\Users\DELL\ev range prediction project agni\new data\measurable data\cleaned_data\cleaned final data\sumo\sumo_integration\config\map_with_tls.net.xml"/>
+    <additional-files value="C:\Users\DELL\ev range prediction project agni\new data\measurable data\cleaned_data\cleaned final data\sumo\sumo_integration\config\ev_types.add.xml"/>
+    <output-trip-file value="C:\Users\DELL\ev range prediction project agni\new data\measurable data\cleaned_data\cleaned final data\sumo\sumo_integration\config\evroutenew.rou.xml"/>
+    <vtype-output value="bmw_i3"/>
+    <prefix value="ev_"/>
+    <vehicle-class value="passenger"/>
+    <fringe-factor value="10"/>
+    <end value="100.0"/>
+</configuration>
+-->
+
+<additional xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="http://sumo.dlr.de/xsd/additional_file.xsd">
+    <vType id="ev__passenger" vClass="passenger"/>
+</additional>
