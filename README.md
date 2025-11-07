@@ -1,72 +1,65 @@
-# ⚡ EV Range Prediction using Physics-Informed Neural Network (PINN)
+# EV Range Prediction using Physics‑Informed Neural Networks (PINNs) — *with Real‑Traffic Simulation*
 
-### 🚗 Intelligent, Physics-Consistent Estimation of SOC, Power, and Range for Electric Vehicles
+[![Python](https://img.shields.io/badge/Python-3.10+-blue.svg)]()
+[![PyTorch](https://img.shields.io/badge/Framework-PyTorch-red.svg)]()
+[![SUMO](https://img.shields.io/badge/Simulator-SUMO-orange.svg)]()
+[![License: MIT](https://img.shields.io/badge/License-MIT-green.svg)]()
 
-This project implements a **Physics-Informed Neural Network (PINN)** for **Electric Vehicle (EV) range prediction**.  
-Unlike conventional machine learning models that rely purely on data, this architecture embeds **real vehicle physics** directly into the neural network, ensuring predictions are **physically consistent**, **interpretable**, and **reliable under unseen conditions**.
 
----
-
-## 📘 Table of Contents
-- [Overview](#overview)
-- [Key Features](#key-features)
-- [Architecture](#architecture)
-- [Physics Layer Details](#physics-layer-details)
-- [Dataset & Preprocessing](#dataset--preprocessing)
-- [Training Pipeline](#training-pipeline)
-- [Outputs & Visualizations](#outputs--visualizations)
-- [Real-World Applications](#real-world-applications)
-- [Installation](#installation)
-- [Usage](#usage)
-- [Repository Structure](#repository-structure)
-- [Future Improvements](#future-improvements)
-- [License](#license)
 
 ---
 
-## 🧠 Overview
-
-Modern EVs often mispredict range due to dynamic real-world conditions — terrain, temperature, driver behavior, and energy losses.  
-This project addresses that by combining **data-driven learning** with **physics-based modeling**, using a deep **LSTM + Attention + Physics-Layer** hybrid network.
-
-The system predicts:
-- 🔋 **State of Charge (SOC)** – remaining battery percentage  
-- ⚙️ **Power Consumption (kW)** – instantaneous power draw  
-- 🛣️ **Driving Range (km)** – estimated remaining range  
-
-and enforces **realistic physical behavior** using embedded battery & vehicle dynamics equations.
-
----
-
-## 🔑 Key Features
-
-✅ **Physics-Informed Loss Integration**  
-Learns battery power consumption and SOC under real physical constraints.
-
-✅ **Hybrid Deep Learning Architecture**  
-Combines **LSTM** (for sequential patterns), **Attention** (for interpretability), and **Dense Estimators** (for final range).
-
-✅ **Realistic EV Physics**  
-Models drag, rolling resistance, gravity, temperature effects, and drivetrain efficiency.
-
-✅ **Visualization Suite**  
-Auto-generates plots for model accuracy, physics validation, range trends, and attention heatmaps.
-
-✅ **Explainable Predictions**  
-Attention heatmaps reveal which timesteps most influenced range estimation.
-
-✅ **Modular & Scalable**  
-Easily adaptable for different EV datasets or route conditions.
+## Table of Contents
+- [EV Range Prediction using Physics‑Informed Neural Networks (PINNs) — *with Real‑Traffic Simulation*](#ev-range-prediction-using-physicsinformed-neural-networks-pinns--with-realtraffic-simulation)
+  - [Table of Contents](#table-of-contents)
+  - [Overview](#overview)
+  - [🧩 Architecture](#-architecture)
+  - [What’s New — Simulation](#whats-new--simulation)
+  - [Model \& Physics](#model--physics)
+  - [Data Schema](#data-schema)
+  - [Quickstart](#quickstart)
+    - [1️⃣ Setup](#1️⃣-setup)
+    - [2️⃣ Run SUMO Simulation](#2️⃣-run-sumo-simulation)
+    - [3️⃣ Preprocess Data](#3️⃣-preprocess-data)
+    - [4️⃣ Train the PINN](#4️⃣-train-the-pinn)
+    - [5️⃣ Validate with SUMO Data](#5️⃣-validate-with-sumo-data)
+  - [Training \& Evaluation](#training--evaluation)
+  - [Visualization](#visualization)
+  - [Project Structure](#project-structure)
+  - [Configuration](#configuration)
+  - [Reproducibility](#reproducibility)
+  - [Roadmap](#roadmap)
+  - [Future Improvements](#future-improvements)
+  - [Requirements](#requirements)
+  - [License](#license)
+  - [Author](#author)
+  - [Summary](#summary)
 
 ---
 
+## Overview
+
+Conventional EV range estimators fail under **non‑stationary real‑world traffic**.  
+This project combines **sequence modeling** with a **physics‑constrained loss** so predictions obey vehicle dynamics.  
+
+Targets:
+- **SOC (0–1)**
+- **Traction/Aux Power (kW)**
+- **Remaining Range (km)**
+
+Key ideas:
+- **PINN Loss** enforces power balance, SOC bounds, and energy conservation.  
+- **SUMO Simulation** generates traffic‑accurate drive cycles (urban/arterial/highway).  
+- **Attention** provides interpretability across time steps.
+
+---
 ## 🧩 Architecture
 
 ```text
 Input: [velocity, acceleration, elevation, ambient temperature, ...] → (time-series sequence)
 
             ┌───────────────────────────────┐
-            │   Input Projection Layer       │
+            │   Input Projection Layer      │
             └─────────────┬─────────────────┘
                           │
                    ┌──────▼──────┐
@@ -74,13 +67,13 @@ Input: [velocity, acceleration, elevation, ambient temperature, ...] → (time-s
                    └──────┬──────┘
                           │
                    ┌──────▼──────┐
-                   │ Attention    │
+                   │ Attention   │
                    └──────┬──────┘
           ┌────────────────────────────────┐
           │                                │
    ┌──────▼──────┐                 ┌───────▼──────┐
-   │ SOC Head     │                 │ Power Head   │
-   └──────┬───────┘                 └──────┬──────┘
+   │ SOC Head    │                 │ Power Head   │
+   └──────┬──────┘                 └──────┬───────┘
           │                                │
           └──────────────┬─────────────────┘
                          ▼
@@ -92,182 +85,242 @@ Input: [velocity, acceleration, elevation, ambient temperature, ...] → (time-s
 
 ---
 
-## ⚙️ Physics Layer Details
 
-The **`PhysicsLayer`** enforces realistic constraints using vehicle parameters:
+## What’s New — Simulation
 
-| Parameter | Description | Symbol |
-|------------|--------------|--------|
-| `battery_capacity` | Battery energy (kWh) | C |
-| `vehicle_mass` | Vehicle weight (kg) | m |
-| `drag_coeff` | Aerodynamic drag | Cd |
-| `frontal_area` | Vehicle frontal area (m²) | A |
-| `rolling_resistance` | Tire rolling resistance | Cr |
-| `air_density` | Ambient air density | ρ |
-| `gravity` | Gravitational acceleration | g |
-| `efficiency` | Drivetrain efficiency | η |
+Real‑traffic simulation is now part of the pipeline:
 
-**Power Equation:**
-\[
-P = \frac{(F_{drag} + F_{roll} + F_{grade} + F_{accel}) \cdot v}{\eta} + P_{aux}
-\]
-
-This power is compared to the neural prediction using **Huber loss**, ensuring the model’s outputs stay within physical realism.
+1. **Network & Routes**: SUMO network created using provided XMLs (trips, routes, and vehicle types).  
+2. **Traffic Profiles**: Realistic speed and acceleration patterns under traffic.  
+3. **Telemetry Export**: Records speed, acceleration, elevation/grade, and stop events.  
+4. **Data Preprocessing**: Generates enriched feature datasets for model training.  
+5. **PINN Training**: Combines data-driven and physics-driven losses.
 
 ---
 
-## 🧮 Dataset & Preprocessing
+## Model & Physics
 
-Input data includes:
-- Velocity (km/h)  
-- Acceleration (m/s²)  
-- Elevation grade (%)  
-- Ambient temperature (°C)  
-- Energy / power consumption (kW)  
-- SOC over time
+**Architecture**: LSTM → Attention → Dual heads (**SOC**, **Power**) → **Range head**  
 
-Data is normalized, cleaned, and serialized into:
-```
-processed_ev_data.pkl
-```
+**Physics constraint:**
 
-Splits:
-- 80% training
-- 20% testing
+$$
+P(t) \approx \frac{(F_{drag} + F_{roll} + F_{grade} + F_{accel}) \, v}{\eta} + P_{aux}
+$$
 
-Each sample is a **time-series window** of driving data.
+Where:
+
+- Drag: \( F_{drag} = \tfrac{1}{2} \rho C_d A v^2 \)  
+- Rolling: \( F_{roll} = m g C_r \)  
+- Grade: \( F_{grade} = m g \sin(\theta) \)  
+- Accel: \( F_{accel} = m a \)  
+
+**SOC update (discrete):**
+
+$$
+SOC_{t+1} = SOC_t - \frac{P(t) \, \Delta t}{C_{bat}} \quad \text{s.t.} \; 0 \leq SOC \leq 1
+$$
+
 
 ---
 
-## 🔧 Training Pipeline
+## Data Schema
 
-**Training Command:**
+**Raw SUMO outputs:** CSV and XML (speed, accel, position, trip info).  
+**Processed datasets:** merged and feature-enriched CSVs.  
+
+**Example columns:**
+- `time_s, speed_mps, accel_mps2, lat, lon, elevation_m, grade, stop_flag, ambient_temp_C`
+- Optional: `soc_meas, power_kw_meas` (if measured data exists)
+
+---
+
+## Quickstart
+
+### 1️⃣ Setup
 ```bash
-python ev_pinn_train.py
-```
-
-**Workflow:**
-1. Load dataset → create PyTorch `DataLoader`
-2. Initialize EVRangePINN model
-3. Compute combined data + physics losses
-4. Apply learning rate scheduling & early stopping
-5. Save best model weights and history
-
-**Core Loss:**
-\[
-L_{total} = L_{data} + \lambda_{physics}L_{physics}
-\]
-
-where \( L_{physics} \) enforces:
-- Power consistency  
-- SOC bounds  
-- Energy magnitude limits
-
----
-
-## 📊 Outputs & Visualizations
-
-All plots are auto-saved in `ev_pinn_plots/`.
-
-| Plot | Description |
-|------|--------------|
-| **training_validation_physics_loss.png** | Convergence of training, validation, and physics loss |
-| **prediction_accuracy_errors_combined.png** | SOC & Power accuracy + error histograms |
-| **physics_analysis.png** | Model vs Physics power, vs velocity, elevation, temperature |
-| **energy_consumption_heatmap.png** | Heatmap of energy consumption (kWh/km) vs speed & acceleration |
-| **range_prediction_analysis.png** | Range distribution and correlations (Range–SOC, Range–Power) |
-| **attention_heatmap.png** | Attention weights across timesteps for interpretability |
-
----
-
-## 🌍 Real-World Applications
-
-| Sector | Application | Impact |
-|---------|--------------|--------|
-| 🚘 **EV Manufacturers** | Real-time range prediction | Reduces driver range anxiety |
-| 🔋 **Battery Management Systems** | SOC estimation improvement | Increases battery life accuracy |
-| 🚛 **Fleet Operators** | Route energy optimization | Reduces operational cost |
-| 🧪 **Research & Simulation** | Digital twin validation | Tests physics-ML hybrids |
-| ⚡ **Charging Networks** | Demand forecasting | Smarter grid load management |
-
----
-
-## 🧰 Installation
-
-```bash
-git clone https://github.com/<your-username>/EV-Range-Prediction-PINN.git
-cd EV-Range-Prediction-PINN
+git clone https://github.com/kamaladhi/EV-Range-prediction-using-PINNS-under-real-traffic-condition.git
+cd EV-Range-prediction-using-PINNS-under-real-traffic-condition
 pip install -r requirements.txt
 ```
 
-**requirements.txt**
+Install **SUMO** if not already:
+```bash
+# Linux
+sudo apt install sumo sumo-tools
+
+# Windows
+# Download from: https://sumo.dlr.de/docs/Downloads.php
+# Add SUMO/bin to PATH
 ```
-torch
-numpy
-matplotlib
-seaborn
-scikit-learn
-pickle-mixin
+
+### 2️⃣ Run SUMO Simulation
+```bash
+sumo -c Simulation/simulation.sumocfg
+```
+This generates raw telemetry under `Simulation/output/`
+
+### 3️⃣ Preprocess Data
+Open and execute:  
+`Simulation/data_preprocess.ipynb`  
+Outputs:  
+- `filtered_sumo_data.csv`  
+- `ev_sumo_dataset.csv`  
+- `ev_sumo_dataset_16features.csv`  
+
+### 4️⃣ Train the PINN
+Open and run:  
+`Scripts/pinns_model_new.ipynb`  
+- Loads preprocessed data  
+- Trains LSTM + Physics-Informed model  
+- Saves model: `Scripts/15_07_model.pth`  
+- Logs metrics: `training_history.pkl`  
+
+### 5️⃣ Validate with SUMO Data
+Open and run:  
+`Scripts/validate_pinn_with_sumo.ipynb`  
+- Uses SUMO-generated dataset for validation  
+- Evaluates SOC, Power, and Range predictions  
+- Plots stored in: `Scripts/ev_pinn_plots/`  
+
+---
+
+## Training & Evaluation
+
+**Training notebook:** `Scripts/pinns_model_new.ipynb`  
+**Validation notebook:** `Scripts/validate_pinn_with_sumo.ipynb`  
+
+Metrics:
+- **MAE / RMSE** for SOC, Power, and Range  
+- **Physics residual** (lower is better)  
+- **Percent within SOC bounds (0–1)**  
+
+---
+
+## Visualization
+
+All visual outputs are saved in `Scripts/ev_pinn_plots/`:
+
+- `training_validation_physics_loss.png`  
+- `prediction_accuracy_errors_combined.png`  
+- `physics_analysis.png`  
+- `range_prediction_analysis.png`  
+- `attention_heatmap.png`  
+
+---
+
+## Project Structure
+
+```
+EV-Range-prediction-using-PINNS-under-real-traffic-condition/
+├── Scripts/
+│   ├── ev_pinn_plots/                 # Output plots
+│   ├── plots/                         # Additional figures
+│   ├── 15_07_model.pth                # Trained model checkpoint
+│   ├── training_history.pkl           # Loss and metric logs
+│   ├── pinns_model_new.ipynb          # Main training notebook
+│   └── validate_pinn_with_sumo.ipynb  # Simulation validation pipeline
+│
+├── Simulation/
+│   ├── config/
+│   │   └── bmw_i3/                    # Vehicle config (mass, Cd, etc.)
+│   ├── ev_route_new1.rou.xml          # Route configuration
+│   ├── ev_trips_new1.trips.xml        # Trip definitions
+│   ├── ev_types.add.xml               # Vehicle types
+│   ├── map_with_tls.net.xml           # SUMO network file
+│   ├── simulation.sumocfg             # SUMO simulation config
+│   ├── output/
+│   │   ├── ev_sumo_dataset.csv
+│   │   ├── ev_sumo_dataset_16features.csv
+│   │   ├── filtered_sumo_data.csv
+│   │   ├── summary.xml
+│   │   ├── tripinfo.xml
+│   │   └── simulation_summary.xml
+│   └── data_preprocess.ipynb          # Preprocessing script
+│
+└── README.md
 ```
 
 ---
 
-## ▶️ Usage
+## Configuration
 
-1. Place your processed dataset in:
-   ```
-   data/processed_ev_data.pkl
-   ```
+All hyperparameters and physics parameters are defined **inside the notebooks**:  
+- `Scripts/pinns_model_new.ipynb` → Model, training, and loss configuration  
+- `Simulation/data_preprocess.ipynb` → Vehicle physics and dataset features
 
-2. Train the model:
-   ```bash
-   python ev_pinn_train.py
-   ```
-
-3. Generate visualizations:
-   ```bash
-   python ev_pinn_analysis.py
-   ```
-
-4. Results saved automatically in:
-   ```
-   ev_pinn_plots/
-   ```
+Typical vehicle parameters:
+```yaml
+battery_capacity_kwh: 60.0
+vehicle_mass_kg: 1750
+drag_coeff: 0.28
+frontal_area_m2: 2.2
+rolling_resistance: 0.010
+air_density: 1.225
+gravity: 9.80665
+drivetrain_efficiency: 0.92
+aux_power_kw: 0.8
+```
 
 ---
 
-## 📂 Repository Structure
+## Reproducibility
 
-
+- Deterministic seeds for all runs  
+- `requirements.txt` specifies frozen versions  
+- Checkpoint (`15_07_model.pth`) included  
+- SUMO input XMLs version-controlled for consistent simulation
 
 ---
 
-## 🚀 Future Improvements
+## Roadmap
+
+- Battery ageing integration (capacity fade & internal resistance)
+- Weather and temperature profile coupling
+- Deployment on Jetson / Raspberry Pi with CAN integration
+- CARLA coupling for perception‑driven route simulation
+
+---
+
+##  Future Improvements
 
 - Incorporate **battery degradation physics** for aging-aware prediction  
 - Add **multi-modal fusion** (GPS, weather, and driver data)  
 - Extend to **real-time deployment on edge hardware** (NVIDIA Jetson / Raspberry Pi)  
-- Integrate **reinforcement learning** for adaptive eco-driving suggestions  
+- Integrate **reinforcement learning** for adaptive eco-driving suggestions 
+   
+---
+
+##  Requirements
+
+- torch>=2.0.0
+- numpy
+- pandas
+- matplotlib
+- scikit-learn
+- sumolib
+- traci
 
 ---
 
-## 📜 License
+##  License
 
 This project is licensed under the **MIT License** — free for research, development, and educational use.
 
 ---
 
-### 👨‍💻 Author
+##  Author
 
-**Jeeva Kamal**  
+**Jeevakamal K R**  
 
 📧 [jeevakamal2005@gmail.com](mailto:jeevakamal2005@gmail.com)  
-🌐 GitHub: [github.com/jeevakamal](https://github.com/jeevakamal)
+🌐 GitHub: [github.com/kamaladhi](https://github.com/kamaladhi)
 
 ---
 
-### 🏁 Summary
+##  Summary
 
 > **EV-Range-Prediction-PINN**  
 > blends **deep learning and vehicle physics**  
 > to deliver **accurate, interpretable, and deployable** range estimation for the next generation of smart electric vehicles.
+
